@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>レトロ風本格育成ゲーム - 悪者・レア系100体完全版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'DotGothic16', monospace;
+            background-color: #12121a;
+            color: #1f2937;
+            user-select: none;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', 'DotGothic16', cursive;
+        }
+
+        /* 携帯ゲーム機本体フレーム */
+        .handheld-body {
+            background: linear-gradient(145deg, #2b2d42, #1d1e2c);
+            border: 4px solid #ef233c;
+            box-shadow: 
+                inset -6px -6px 0px rgba(0, 0, 0, 0.4),
+                inset 6px 6px 0px rgba(255, 255, 255, 0.1),
+                0 20px 30px rgba(0, 0, 0, 0.6);
+            border-radius: 40px 40px 60px 60px;
+        }
+
+        /* 液晶画面風フレーム */
+        .lcd-screen {
+            background-color: #8bac0f;
+            border: 4px solid #0f380f;
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 走査線風オーバーレイ */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.1) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* 3Dレトロボタン */
+        .retro-btn {
+            background: linear-gradient(180deg, #4ea8de, #0077b6);
+            border: 3px solid #03045e;
+            box-shadow: 0 5px 0 #023e8a, 0 8px 6px rgba(0,0,0,0.4);
+            transition: all 0.05s ease;
+            color: #ffffff;
+            text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+        }
+
+        .retro-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #023e8a, 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-purple {
+            background: linear-gradient(180deg, #b5179e, #7209b7);
+            border: 3px solid #240046;
+            box-shadow: 0 5px 0 #3a0ca3, 0 8px 6px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-purple:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #240046, 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-red {
+            background: linear-gradient(180deg, #ff4d6d, #d90429);
+            border: 3px solid #590d22;
+            box-shadow: 0 5px 0 #800f2f, 0 8px 6px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-red:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #590d22, 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-yellow {
+            background: linear-gradient(180deg, #ffb703, #fb8500);
+            border: 3px solid #9e2a2b;
+            box-shadow: 0 5px 0 #d4a373, 0 8px 6px rgba(0,0,0,0.4);
+        }
+
+        .retro-btn-yellow:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #9e2a2b, 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        /* アニメーション */
+        @keyframes eggSway {
+            0%, 100% { transform: rotate(-6deg) translateY(0); }
+            50% { transform: rotate(6deg) translateY(-4px); }
+        }
+
+        @keyframes bouncePet {
+            0%, 100% { transform: translateY(0) scale(1, 1); }
+            50% { transform: translateY(-10px) scale(1.06, 0.94); }
+        }
+
+        @keyframes floatAscend {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-140px) scale(1.6); }
+        }
+
+        @keyframes floatParticle {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+        }
+
+        @keyframes flashFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.1; }
+        }
+
+        .anim-egg { animation: eggSway 1.8s infinite ease-in-out; }
+        .anim-bounce { animation: bouncePet 0.8s infinite ease-in-out; }
+        .anim-ascend { animation: floatAscend 3.5s forwards ease-in-out; }
+        .anim-flash { animation: flashFlash 0.3s infinite; }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            animation: floatParticle 1s forwards ease-out;
+            font-size: 24px;
+            z-index: 30;
+        }
+
+        /* プログレスバー */
+        .bar-bg {
+            background-color: #306230;
+            border: 2px solid #0f380f;
+        }
+        .bar-fill {
+            background-color: #9bbc0f;
+        }
+
+        /* 図鑑用スクロール */
+        .book-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .book-scroll::-webkit-scrollbar-track {
+            background: #306230;
+        }
+        .book-scroll::-webkit-scrollbar-thumb {
+            background: #9bbc0f;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- 携帯ゲーム機本体 -->
+    <div class="handheld-body w-full max-w-sm p-5 relative flex flex-col items-center">
+        
+        <!-- 本体のスピーカー・LED装飾 -->
+        <div class="w-full flex justify-between items-center mb-3 px-2">
+            <div class="flex space-x-1.5">
+                <div class="w-3 h-3 rounded-full bg-red-600 border border-red-900 animate-pulse"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-700"></div>
+            </div>
+            <div class="pixel-font text-xs font-bold text-slate-200 tracking-widest">DARK & RARE PETS</div>
+            <div class="flex space-x-1">
+                <div class="w-1.5 h-4 bg-slate-600 rounded-full"></div>
+                <div class="w-1.5 h-4 bg-slate-600 rounded-full"></div>
+                <div class="w-1.5 h-4 bg-slate-600 rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- 液晶画面エリア -->
+        <div class="lcd-screen w-full rounded-lg p-3 relative text-[#0f380f] flex flex-col items-center justify-between min-h-[360px]">
+            <div class="scanlines absolute inset-0"></div>
+
+            <!-- メインゲームビュー -->
+            <div id="view-game" class="w-full flex flex-col items-center justify-between h-full z-10 flex-1">
+                <!-- ステータスヘッダー -->
+                <div class="w-full">
+                    <div class="flex justify-between items-center text-xs font-bold border-b-2 border-[#0f380f] pb-1 mb-2">
+                        <span id="stage-title">STAGE: 1</span>
+                        <span id="gen-display">1代目 / 0才</span>
+                    </div>
+
+                    <!-- ステータスバー -->
+                    <div class="space-y-1 text-xs font-bold">
+                        <div class="flex items-center justify-between">
+                            <span class="w-14">お世話</span>
+                            <div class="bar-bg flex-1 h-3 mx-2 p-0.5">
+                                <div id="care-bar" class="bar-fill h-full w-0 transition-all duration-300"></div>
+                            </div>
+                            <span id="care-val" class="w-8 text-right">0%</span>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="w-14">愛着度</span>
+                            <div class="bar-bg flex-1 h-3 mx-2 p-0.5">
+                                <div id="affection-bar" class="bar-fill h-full w-0 transition-all duration-300"></div>
+                            </div>
+                            <span id="affection-val" class="w-8 text-right">0/10</span>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="w-14">すばやさ</span>
+                            <div class="bar-bg flex-1 h-3 mx-2 p-0.5">
+                                <div id="speed-bar" class="bar-fill h-full w-0 transition-all duration-300"></div>
+                            </div>
+                            <span id="speed-val" class="w-8 text-right">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 中央：キャラクターエリア -->
+                <div id="screen-center" class="relative my-2 flex flex-col items-center justify-center w-full min-h-[140px]">
+                    <div id="particle-layer" class="absolute inset-0 pointer-events-none flex items-center justify-center"></div>
+
+                    <!-- 結婚相手アバター -->
+                    <div id="partner-avatar" class="hidden absolute right-3 bottom-6 anim-bounce w-14 h-14"></div>
+
+                    <!-- メインペット (サイズ動的可変) -->
+                    <div id="pet-avatar-container" class="w-28 h-28 flex items-center justify-center cursor-pointer select-none filter drop-shadow-md transition-transform duration-200 active:scale-95 anim-egg">
+                        <svg id="pet-svg-renderer" viewBox="0 0 100 100" class="w-full h-full"></svg>
+                    </div>
+
+                    <!-- キャラクター名 -->
+                    <div id="char-name-tag" class="text-xs font-bold mt-1 text-[#0f380f]">ダークたまご</div>
+
+                    <!-- メッセージ -->
+                    <div id="msg-box" class="mt-1 text-xs font-bold text-center bg-[#306230] text-[#9bbc0f] border-2 border-[#0f380f] px-2 py-0.5 rounded shadow-sm max-w-[95%] truncate">
+                        ボタンで 音声をON/OFF！
+                    </div>
+                </div>
+
+                <!-- 下部ステータス -->
+                <div class="w-full flex justify-between items-center text-[10px] font-bold border-t border-[#0f380f] pt-1">
+                    <span id="status-msg">お世話してね！</span>
+                    <span id="comp-rate">図鑑: 1 / 100</span>
+                </div>
+            </div>
+
+            <!-- 図鑑（殿堂入り一覧）画面ビュー：z-indexを50にし、背景色を不透明にして完全に重なりを解消 -->
+            <div id="view-book" class="w-full h-full absolute inset-0 bg-[#8bac0f] p-3 z-50 hidden flex-col justify-between">
+                <div class="flex justify-between items-center border-b-2 border-[#0f380f] pb-1 mb-2">
+                    <span class="font-bold text-xs text-[#0f380f]">悪者・レア図鑑 (<span id="book-count">1</span>/100)</span>
+                    <button onclick="toggleBookView()" class="text-[10px] bg-[#0f380f] text-[#9bbc0f] px-2.5 py-1 font-bold rounded hover:opacity-90">とじる</button>
+                </div>
+                <!-- 図鑑グリッド -->
+                <div id="book-grid" class="book-scroll grid grid-cols-4 gap-1.5 overflow-y-auto max-h-[260px] p-1"></div>
+            </div>
+
+            <!-- 進化演出オーバーレイ -->
+            <div id="evo-overlay" class="absolute inset-0 bg-[#8bac0f] z-30 hidden flex-col items-center justify-center text-center p-4">
+                <div id="evo-text" class="pixel-font text-sm font-bold animate-bounce mb-4 text-[#0f380f]">おや…！？</div>
+                <div id="evo-avatar-container" class="w-28 h-28 anim-flash mb-4">
+                    <svg id="evo-svg-renderer" viewBox="0 0 100 100" class="w-full h-full"></svg>
+                </div>
+                <div id="evo-subtext" class="text-xs font-bold text-[#0f380f]">新たな姿へ進化！</div>
+            </div>
+
+            <!-- ゲームクリア画面 -->
+            <div id="clear-overlay" class="absolute inset-0 bg-[#8bac0f] z-40 hidden flex-col items-center justify-center text-center p-4">
+                <div class="pixel-font text-base font-bold animate-bounce text-[#0f380f] mb-2">🎉 CONGRATULATIONS! 🎉</div>
+                <div class="w-24 h-24 my-2" id="clear-svg-container"></div>
+                <div class="text-xs font-bold text-[#0f380f] mb-4">全100種類の悪者・レアキャラを<br>完全コンプリートしました！<br>伝説のマスターブリーダー誕生！</div>
+                <button onclick="restartAfterClear()" class="bg-[#0f380f] text-[#9bbc0f] px-4 py-2 font-bold text-xs rounded">周回プレイを続ける</button>
+            </div>
+
+        </div>
+
+        <!-- 操作ボタンエリア -->
+        <div class="w-full mt-4 flex flex-col items-center">
+            
+            <!-- アクションボタン -->
+            <div class="grid grid-cols-3 gap-2 w-full mb-3">
+                <button id="btn-feed" onclick="actionFeed()" class="retro-btn rounded-xl py-3 flex flex-col items-center justify-center">
+                    <span class="text-xl mb-0.5">🍖</span>
+                    <span id="btn-feed-txt" class="text-xs font-bold">ごはん</span>
+                </button>
+                <button id="btn-play" onclick="actionPlay()" class="retro-btn rounded-xl py-3 flex flex-col items-center justify-center">
+                    <span class="text-xl mb-0.5">⚔️</span>
+                    <span id="btn-play-txt" class="text-xs font-bold">あそぶ</span>
+                </button>
+                <button id="btn-pet" onclick="actionPet()" class="retro-btn rounded-xl py-3 flex flex-col items-center justify-center">
+                    <span class="text-xl mb-0.5">✨</span>
+                    <span id="btn-pet-txt" class="text-xs font-bold">なでる</span>
+                </button>
+            </div>
+
+            <!-- サブボタン（サウンド・図鑑・リセット） -->
+            <div class="w-full flex justify-between items-center px-1 mt-1">
+                <div class="flex flex-col items-center">
+                    <button id="btn-sound" onclick="toggleAudio()" class="retro-btn retro-btn-yellow rounded-full w-10 h-10 flex items-center justify-center mb-1">
+                        <span id="sound-icon" class="text-xs font-bold">🔇</span>
+                    </button>
+                    <span class="text-[9px] font-bold text-slate-300">BGM/FX</span>
+                </div>
+
+                <div class="flex space-x-2">
+                    <div class="flex flex-col items-center">
+                        <button onclick="toggleBookView()" class="retro-btn retro-btn-purple rounded-full w-10 h-10 flex items-center justify-center mb-1">
+                            <span class="text-xs font-bold">📖</span>
+                        </button>
+                        <span class="text-[9px] font-bold text-slate-300">図鑑</span>
+                    </div>
+
+                    <div class="flex flex-col items-center">
+                        <button onclick="confirmReset()" class="retro-btn retro-btn-red rounded-full w-10 h-10 flex items-center justify-center mb-1">
+                            <span class="text-[10px] font-bold">RST</span>
+                        </button>
+                        <span class="text-[9px] font-bold text-slate-300">リセット</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. Web Audio API サウンドシステム ---
+        let audioCtx = null;
+        let isMuted = true;
+        let bgmInterval = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleAudio() {
+            initAudio();
+            isMuted = !isMuted;
+            document.getElementById('sound-icon').innerText = isMuted ? "🔇" : "🔊";
+            
+            if (isMuted) {
+                stopBgm();
+            } else {
+                startBgm();
+                playSfx('button');
+            }
+        }
+
+        function playTone(freq, type, duration, gainValue = 0.1) {
+            if (isMuted || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(gainValue, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function playSfx(type) {
+            if (isMuted || !audioCtx) return;
+            initAudio();
+
+            if (type === 'button') {
+                playTone(400, 'square', 0.08, 0.08);
+            } else if (type === 'feed') {
+                playTone(220, 'square', 0.07, 0.1);
+                setTimeout(() => playTone(330, 'square', 0.08, 0.1), 70);
+            } else if (type === 'play') {
+                playTone(500, 'sawtooth', 0.06, 0.08);
+                setTimeout(() => playTone(650, 'sawtooth', 0.08, 0.08), 60);
+            } else if (type === 'pet') {
+                playTone(580, 'sine', 0.1, 0.08);
+                setTimeout(() => playTone(750, 'sine', 0.12, 0.08), 80);
+            } else if (type === 'evo') {
+                const notes = [220, 277, 330, 440, 554, 659, 880];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => playTone(freq, 'square', 0.1, 0.1), idx * 60);
+                });
+            } else if (type === 'marry') {
+                const melody = [440, 554, 659, 880, 659, 880];
+                melody.forEach((freq, idx) => {
+                    setTimeout(() => playTone(freq, 'triangle', 0.15, 0.1), idx * 120);
+                });
+            } else if (type === 'ascend') {
+                for (let i = 0; i < 12; i++) {
+                    setTimeout(() => playTone(300 + i * 70, 'sine', 0.15, 0.08), i * 90);
+                }
+            }
+        }
+
+        function startBgm() {
+            stopBgm();
+            if (isMuted) return;
+
+            const bgmNotes = [
+                220.00, 277.18, 329.63, 440.00,
+                277.18, 329.63, 440.00, 554.37,
+                246.94, 311.13, 369.99, 493.88,
+                329.63, 415.30, 493.88, 659.25
+            ];
+            let noteIdx = 0;
+
+            bgmInterval = setInterval(() => {
+                if (!isMuted && audioCtx) {
+                    playTone(bgmNotes[noteIdx], 'square', 0.12, 0.025);
+                    noteIdx = (noteIdx + 1) % bgmNotes.length;
+                }
+            }, 230);
+        }
+
+        function stopBgm() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        // --- 2. 100名分の日本人名リスト（完全個別） ---
+        const JAPANESE_NAMES = [
+            "タロウ", "ハナコ", "レン", "アオイ", "リク", "ヒナタ", "サクラ", "カイト", "ユウキ", "ミソラ",
+            "ソウタ", "リン", "ヤマト", "ツバサ", "コハク", "メイ", "イツキ", "ヒロ", "ハルト", "ユイ",
+            "タクミ", "アカリ", "ショウタ", "ヒカリ", "ダイチ", "フウカ", "ケント", "ミナト", "ハルキ", "ナナミ",
+            "コウキ", "ホノカ", "レイ", "カエデ", "シン", "スズ", "ハヤト", "リオ", "ソラ", "ツムギ",
+            "ユウリ", "カンタ", "アスカ", "リョウ", "チヒロ", "カイ", "モモカ", "ダイキ", "ミユ", "セイヤ",
+            "サラ", "ヒロト", "アイ", "ユウマ", "ココロ", "タツキ", "スミレ", "ケンシン", "カノン", "リクエ",
+            "トモヤ", "シオリ", "ナオキ", "ユウナ", "カズキ", "マイ", "リュウ", "ハルナ", "コウタ", "ヒヨリ",
+            "マサト", "リコ", "タイガ", "ミサキ", "シュン", "アヤネ", "ソウマ", "カリン", "トウマ", "ノゾミ",
+            "ヒデキ", "エミリ", "コウジ", "ミコト", "ユウタ", "ハナ", "タケシ", "キコ", "ショウ", "ルナ",
+            "リュウセイ", "ヒカゲ", "ゴウ", "マヒロ", "ジン", "ミヤビ", "ケンジ", "ツノ", "カイリ", "アマツ"
+        ];
+
+        // --- 3. 本格的でリッチなキャラデザ＆サイズ感SVG生成システム ---
+        function generatePixelArtSvg(id, isLocked = false) {
+            if (isLocked) {
+                return `
+                <svg viewBox="0 0 100 100" width="100%" height="100%">
+                    <rect x="25" y="25" width="50" height="50" rx="15" fill="#0f380f"/>
+                    <text x="50" y="62" font-family="'Press Start 2P', monospace" font-size="32" fill="#8bac0f" text-anchor="middle">?</text>
+                </svg>`;
+            }
+
+            // 5つの系統分類: 0: 悪者系, 1: レア系, 2: 自然系, 3: ファンタジー系, 4: 伝説系
+            const categoryIndex = (id - 1) % 5;
+            
+            // パレット定義
+            const palettes = [
+                { main: '#7209b7', sub: '#b5179e', accent: '#ff4d6d', eye: '#ff70a6' }, // 悪者系
+                { main: '#00b4d8', sub: '#90e0ef', accent: '#ffd166', eye: '#03045e' }, // レア系
+                { main: '#2b9348', sub: '#55a630', accent: '#aacc00', eye: '#0f380f' }, // 自然系
+                { main: '#f72585', sub: '#b5179e', accent: '#4cc9f0', eye: '#ffffff' }, // ファンタジー
+                { main: '#ffd166', sub: '#f3722c', accent: '#f8961e', eye: '#ffffff' }  // 伝説系
+            ];
+            const p = palettes[categoryIndex];
+
+            // サイズ感・スケールの明確な違いを定義
+            const scaleVariations = [
+                'transform: scale(0.65); transform-origin: center;', // 小型
+                'transform: scale(0.85); transform-origin: center;', // 中小型
+                'transform: scale(1.0); transform-origin: center;',  // 中型
+                'transform: scale(1.15); transform-origin: center;', // 大型
+                'transform: scale(1.35); transform-origin: center;'  // 超大型（画面満杯）
+            ];
+            const scaleStyle = scaleVariations[(id * 3) % 5];
+
+            // 形状バリエーション
+            const shapeType = id % 6;
+            let svgContent = '';
+
+            if (shapeType === 0) {
+                // 角付き悪者系
+                svgContent = `
+                    <polygon points="30,20 50,5 70,20" fill="${p.sub}"/>
+                    <rect x="20" y="25" width="60" height="60" rx="15" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <polygon points="15,40 25,35 25,55" fill="${p.accent}"/>
+                    <polygon points="85,40 75,35 75,55" fill="${p.accent}"/>
+                    <circle cx="38" cy="45" r="7" fill="${p.eye}"/>
+                    <circle cx="62" cy="45" r="7" fill="${p.eye}"/>
+                    <circle cx="39" cy="44" r="2" fill="#000"/>
+                    <circle cx="61" cy="44" r="2" fill="#000"/>
+                    <path d="M40 68 Q50 58 60 68" stroke="#0f380f" stroke-width="4" fill="none" stroke-linecap="round"/>
+                `;
+            } else if (shapeType === 1) {
+                // シャープなレア系
+                svgContent = `
+                    <ellipse cx="50" cy="55" rx="22" ry="32" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <path d="M30 35 L15 20 L35 30 Z" fill="${p.sub}"/>
+                    <path d="M70 35 L85 20 L65 30 Z" fill="${p.sub}"/>
+                    <ellipse cx="50" cy="45" rx="12" ry="16" fill="${p.sub}"/>
+                    <circle cx="42" cy="42" r="5" fill="${p.eye}"/>
+                    <circle cx="58" cy="42" r="5" fill="${p.eye}"/>
+                    <path d="M45 60 Q50 65 55 60" stroke="#0f380f" stroke-width="3" fill="none"/>
+                    <circle cx="50" cy="22" r="6" fill="${p.accent}"/>
+                `;
+            } else if (shapeType === 2) {
+                // 妖精・小動物系
+                svgContent = `
+                    <circle cx="50" cy="55" r="24" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <circle cx="30" cy="30" r="12" fill="${p.sub}" stroke="#0f380f" stroke-width="2"/>
+                    <circle cx="70" cy="30" r="12" fill="${p.sub}" stroke="#0f380f" stroke-width="2"/>
+                    <ellipse cx="50" cy="60" rx="14" ry="10" fill="${p.sub}"/>
+                    <circle cx="43" cy="50" r="6" fill="${p.eye}"/>
+                    <circle cx="57" cy="50" r="6" fill="${p.eye}"/>
+                    <circle cx="44" cy="49" r="2" fill="#fff"/>
+                    <circle cx="58" cy="49" r="2" fill="#fff"/>
+                    <path d="M46 64 Q50 68 54 64" stroke="#0f380f" stroke-width="2.5" fill="none"/>
+                `;
+            } else if (shapeType === 3) {
+                // 重厚タフモンスター系
+                svgContent = `
+                    <rect x="18" y="30" width="64" height="50" rx="20" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <polygon points="25,30 35,15 45,30" fill="${p.accent}"/>
+                    <polygon points="55,30 65,15 75,30" fill="${p.accent}"/>
+                    <rect x="30" y="45" width="40" height="25" rx="8" fill="${p.sub}"/>
+                    <ellipse cx="38" cy="52" rx="5" ry="7" fill="${p.eye}"/>
+                    <ellipse cx="62" cy="52" rx="5" ry="7" fill="${p.eye}"/>
+                    <line x1="40" y1="72" x2="60" y2="72" stroke="#0f380f" stroke-width="4" stroke-linecap="round"/>
+                `;
+            } else if (shapeType === 4) {
+                // 翼付きファンタジー系
+                svgContent = `
+                    <path d="M20 50 Q10 20 35 40 Z" fill="${p.sub}"/>
+                    <path d="M80 50 Q90 20 65 40 Z" fill="${p.sub}"/>
+                    <ellipse cx="50" cy="55" rx="20" ry="24" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <circle cx="42" cy="48" r="5" fill="${p.eye}"/>
+                    <circle cx="58" cy="48" r="5" fill="${p.eye}"/>
+                    <circle cx="50" cy="32" r="8" fill="${p.accent}"/>
+                    <path d="M44 62 Q50 67 56 62" stroke="#0f380f" stroke-width="2.5" fill="none"/>
+                `;
+            } else {
+                // 菱形・神秘系
+                svgContent = `
+                    <polygon points="50,15 80,55 50,95 20,55" fill="${p.main}" stroke="#0f380f" stroke-width="3"/>
+                    <polygon points="50,30 65,55 50,80 35,55" fill="${p.sub}"/>
+                    <circle cx="43" cy="50" r="4.5" fill="${p.eye}"/>
+                    <circle cx="57" cy="50" r="4.5" fill="${p.eye}"/>
+                    <circle cx="50" cy="55" r="4" fill="${p.accent}"/>
+                `;
+            }
+
+            return `<svg viewBox="0 0 100 100" width="100%" height="100%" style="${scaleStyle}">${svgContent}</svg>`;
+        }
+
+        // たまごSVG
+        function generateEggSvg() {
+            return `
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <ellipse cx="50" cy="55" rx="28" ry="36" fill="#f4f1de" stroke="#0f380f" stroke-width="4"/>
+                <path d="M 36 42 C 42 32, 58 32, 64 42 C 58 52, 42 52, 36 42 Z" fill="#7209b7" opacity="0.6"/>
+                <circle cx="42" cy="65" r="5" fill="#4ea8de"/>
+                <circle cx="60" cy="72" r="4" fill="#ffb703"/>
+            </svg>`;
+        }
+
+        // 全100キャラ構築
+        const ALL_CHARACTERS = [];
+        for (let i = 1; i <= 100; i++) {
+            ALL_CHARACTERS.push({
+                id: i,
+                name: JAPANESE_NAMES[(i - 1) % JAPANESE_NAMES.length],
+                catIndex: (i - 1) % 5
+            });
+        }
+
+        // --- 4. ゲーム状態管理 ---
+        let petState = {
+            generation: 1,
+            stage: 1,           // 1:卵, 2:ベビー, 3:キッズ, 4:ヤング, 5:大人(最終形態)
+            charId: 1,
+            care: 30,
+            affection: 0,
+            speed: 0,
+            age: 0,
+            isMarrying: false,
+            isAscending: false,
+            unlockedChars: [1],
+            lastSave: Date.now()
+        };
+
+        // --- 初期化 ---
+        window.onload = function() {
+            loadGame();
+            updateUI();
+            
+            // 経過タイマー (10秒ごとにお世話減少)
+            setInterval(gameTick, 10000);
+            
+            // 年齢増加タイマー (25秒で1才)
+            setInterval(() => {
+                if (petState.stage > 1 && !petState.isMarrying && !petState.isAscending) {
+                    petState.age++;
+                    updateUI();
+                    saveGame();
+                }
+            }, 25000);
+
+            // アバタータップ
+            document.getElementById('pet-avatar-container').addEventListener('click', () => {
+                if (petState.isMarrying) {
+                    acceptMarriage();
+                } else {
+                    actionPet();
+                }
+            });
+        };
+
+        // --- UI更新 ---
+        function updateUI() {
+            const charInfo = ALL_CHARACTERS.find(c => c.id === petState.charId) || ALL_CHARACTERS[0];
+
+            document.getElementById('stage-title').innerText = `STAGE: ${petState.stage}`;
+            document.getElementById('gen-display').innerText = `${petState.generation}代目 / ${petState.age}才`;
+
+            document.getElementById('care-bar').style.width = petState.care + "%";
+            document.getElementById('care-val').innerText = petState.care + "%";
+
+            document.getElementById('affection-bar').style.width = (petState.affection * 10) + "%";
+            document.getElementById('affection-val').innerText = `${petState.affection}/10`;
+
+            document.getElementById('speed-bar').style.width = Math.min(petState.speed, 100) + "%";
+            document.getElementById('speed-val').innerText = petState.speed;
+
+            const svgContainer = document.getElementById('pet-svg-renderer');
+            const avatarBox = document.getElementById('pet-avatar-container');
+            const nameTag = document.getElementById('char-name-tag');
+
+            if (petState.stage === 1) {
+                svgContainer.innerHTML = generateEggSvg();
+                nameTag.innerText = "怪しい卵";
+                avatarBox.className = "w-28 h-28 flex items-center justify-center cursor-pointer select-none filter drop-shadow-md anim-egg";
+            } else {
+                svgContainer.innerHTML = generatePixelArtSvg(petState.charId);
+                nameTag.innerText = charInfo.name;
+                if (!petState.isAscending) {
+                    avatarBox.className = "w-28 h-28 flex items-center justify-center cursor-pointer select-none filter drop-shadow-md anim-bounce";
+                }
+            }
+
+            const partnerEl = document.getElementById('partner-avatar');
+            const btnFeedTxt = document.getElementById('btn-feed-txt');
+            const btnPlayTxt = document.getElementById('btn-play-txt');
+            const btnPetTxt = document.getElementById('btn-pet-txt');
+
+            if (petState.isMarrying) {
+                partnerEl.classList.remove('hidden');
+                const partnerId = (petState.charId % 100) + 1;
+                partnerEl.innerHTML = generatePixelArtSvg(partnerId);
+                document.getElementById('msg-box').innerText = "プロポーズされた！ (結婚する？)";
+                btnFeedTxt.innerText = "結婚する";
+                btnPlayTxt.innerText = "結婚する";
+                btnPetTxt.innerText = "結婚する";
+            } else {
+                partnerEl.classList.add('hidden');
+                btnFeedTxt.innerText = "ごはん";
+                btnPlayTxt.innerText = "あそぶ";
+                btnPetTxt.innerText = "なでる";
+
+                const statusMsg = document.getElementById('status-msg');
+                if (petState.care < 35) {
+                    statusMsg.innerText = "お腹がすいたよ…";
+                    statusMsg.classList.add("text-red-700", "animate-pulse");
+                } else if (petState.care >= 80) {
+                    statusMsg.innerText = "とても元気！";
+                    statusMsg.classList.remove("text-red-700", "animate-pulse");
+                } else {
+                    statusMsg.innerText = "順調に育成中！";
+                    statusMsg.classList.remove("text-red-700", "animate-pulse");
+                }
+            }
+
+            document.getElementById('comp-rate').innerText = `図鑑: ${petState.unlockedChars.length} / 100`;
+        }
+
+        function showMessage(msg) {
+            document.getElementById('msg-box').innerText = msg;
+        }
+
+        function spawnParticle(emoji) {
+            const container = document.getElementById('particle-layer');
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.innerText = emoji;
+            const randomX = (Math.random() - 0.5) * 60;
+            particle.style.left = `calc(50% + ${randomX}px)`;
+            particle.style.top = `40%`;
+            container.appendChild(particle);
+            setTimeout(() => particle.remove(), 1000);
+        }
+
+        // --- アクション ---
+        function actionFeed() {
+            playSfx('button');
+            if (petState.isMarrying) { acceptMarriage(); return; }
+            if (petState.stage === 1) { hatchEgg(); return; }
+            if (petState.isAscending) return;
+
+            if (petState.care >= 100) {
+                showMessage("もうお腹いっぱい！");
+                return;
+            }
+
+            playSfx('feed');
+            petState.care = Math.min(100, petState.care + 25);
+            spawnParticle("🍖");
+            showMessage("美味しい肉を食べた！");
+            
+            checkEvolution();
+            updateUI();
+            saveGame();
+        }
+
+        function actionPlay() {
+            playSfx('button');
+            if (petState.isMarrying) { acceptMarriage(); return; }
+            if (petState.stage === 1) { hatchEgg(); return; }
+            if (petState.isAscending) return;
+
+            playSfx('play');
+            petState.speed = Math.min(100, petState.speed + 10);
+            petState.care = Math.max(0, petState.care - 4);
+            spawnParticle("⚔️");
+            showMessage("激しい特訓をした！すばやさUP");
+
+            checkEvolution();
+            updateUI();
+            saveGame();
+        }
+
+        function actionPet() {
+            playSfx('button');
+            if (petState.isMarrying) { acceptMarriage(); return; }
+            if (petState.stage === 1) { hatchEgg(); return; }
+            if (petState.isAscending) return;
+
+            playSfx('pet');
+            if (petState.affection < 10) {
+                petState.affection = Math.min(10, petState.affection + 1);
+                spawnParticle("✨");
+                showMessage("なでてあげた！機嫌がいい");
+            } else {
+                spawnParticle("💖");
+                showMessage("愛情が最大値に達している！");
+            }
+
+            checkEvolution();
+            updateUI();
+            saveGame();
+        }
+
+        function hatchEgg() {
+            playSfx('feed');
+            petState.care += 30;
+            spawnParticle("✨");
+            if (petState.care >= 100) {
+                triggerEvolution(2);
+            } else {
+                showMessage(`卵がぐらりと揺れた (${petState.care}%)`);
+            }
+            updateUI();
+            saveGame();
+        }
+
+        function gameTick() {
+            if (petState.stage > 1 && !petState.isMarrying && !petState.isAscending) {
+                petState.care = Math.max(0, petState.care - 4);
+                updateUI();
+                saveGame();
+            }
+        }
+
+        // --- 進化・結婚・天昇・図鑑ロジック ---
+        function checkEvolution() {
+            if (petState.stage === 2 && petState.care >= 50 && petState.affection >= 3) {
+                triggerEvolution(3);
+            } else if (petState.stage === 3 && petState.care >= 75 && petState.speed >= 30) {
+                triggerEvolution(4);
+            } else if (petState.stage === 4 && petState.care >= 90 && petState.affection >= 8 && petState.speed >= 60) {
+                triggerEvolution(5);
+            }
+        }
+
+        function triggerEvolution(nextStage) {
+            playSfx('evo');
+
+            let nextCharId = petState.charId;
+            if (nextStage === 5) {
+                const uncollected = ALL_CHARACTERS.map(c => c.id).filter(id => !petState.unlockedChars.includes(id));
+                if (uncollected.length > 0) {
+                    nextCharId = uncollected[Math.floor(Math.random() * uncollected.length)];
+                } else {
+                    nextCharId = Math.floor(Math.random() * 100) + 1;
+                }
+            } else {
+                nextCharId = Math.min(100, petState.charId + Math.floor(Math.random() * 6) + 1);
+            }
+
+            const overlay = document.getElementById('evo-overlay');
+            const evoSvgRenderer = document.getElementById('evo-svg-renderer');
+            const evoText = document.getElementById('evo-text');
+            const evoSubtext = document.getElementById('evo-subtext');
+
+            evoSvgRenderer.innerHTML = petState.stage === 1 ? generateEggSvg() : generatePixelArtSvg(petState.charId);
+            evoSubtext.innerText = "未知なる進化エネルギー…！";
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+
+            let flashes = 0;
+            const flashInterval = setInterval(() => {
+                flashes++;
+                evoSvgRenderer.innerHTML = flashes % 2 === 0 ? generatePixelArtSvg(nextCharId) : generateEggSvg();
+
+                if (flashes > 8) {
+                    clearInterval(flashInterval);
+                    petState.stage = nextStage;
+                    petState.charId = nextCharId;
+
+                    if (!petState.unlockedChars.includes(nextCharId)) {
+                        petState.unlockedChars.push(nextCharId);
+                    }
+
+                    evoSvgRenderer.innerHTML = generatePixelArtSvg(nextCharId);
+                    const newChar = ALL_CHARACTERS.find(c => c.id === nextCharId);
+                    evoText.innerText = `${newChar.name} に進化した！`;
+                    
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        overlay.classList.remove('flex');
+                        showMessage(`${newChar.name} が誕生した！`);
+
+                        if (nextStage === 5) {
+                            setTimeout(triggerMarriageEvent, 1500);
+                        }
+
+                        updateUI();
+                        saveGame();
+
+                        if (petState.unlockedChars.length >= 100) {
+                            setTimeout(showGameClear, 2000);
+                        }
+                    }, 1800);
+                }
+            }, 300);
+        }
+
+        function triggerMarriageEvent() {
+            petState.isMarrying = true;
+            playSfx('marry');
+            spawnParticle("💍");
+            spawnParticle("💖");
+            updateUI();
+        }
+
+        function acceptMarriage() {
+            if (!petState.isMarrying) return;
+            petState.isMarrying = false;
+            playSfx('marry');
+            spawnParticle("💒");
+            spawnParticle("🎉");
+            const char = ALL_CHARACTERS.find(c => c.id === petState.charId);
+            showMessage(`${char.name} が素敵な相手と結婚！`);
+
+            updateUI();
+            saveGame();
+            setTimeout(triggerAscension, 3500);
+        }
+
+        function triggerAscension() {
+            petState.isAscending = true;
+            playSfx('ascend');
+            const char = ALL_CHARACTERS.find(c => c.id === petState.charId);
+            showMessage(`${char.name} が天へ召され、殿堂入りへ…`);
+            
+            const avatarBox = document.getElementById('pet-avatar-container');
+            avatarBox.className = "w-28 h-28 flex items-center justify-center select-none filter drop-shadow-md anim-ascend";
+
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => spawnParticle("✨"), i * 400);
+                setTimeout(() => spawnParticle("👼"), i * 500);
+            }
+
+            setTimeout(() => {
+                petState.isAscending = false;
+                petState.generation++;
+                petState.stage = 1;
+                petState.care = 30;
+                petState.affection = 0;
+                petState.speed = 0;
+                petState.age = 0;
+                petState.charId = 1;
+
+                showMessage("新しい世代の卵を受け継ぎました");
+                updateUI();
+                saveGame();
+                toggleBookView(true);
+            }, 3800);
+        }
+
+        // --- 図鑑機能 ---
+        function toggleBookView(forceOpen = false) {
+            playSfx('button');
+            const bookView = document.getElementById('view-book');
+            if (forceOpen || bookView.classList.contains('hidden')) {
+                renderBookGrid();
+                bookView.classList.remove('hidden');
+                bookView.classList.add('flex');
+            } else {
+                bookView.classList.add('hidden');
+                bookView.classList.remove('flex');
+            }
+        }
+
+        function renderBookGrid() {
+            const grid = document.getElementById('book-grid');
+            document.getElementById('book-count').innerText = petState.unlockedChars.length;
+            grid.innerHTML = "";
+
+            ALL_CHARACTERS.forEach(char => {
+                const isUnlocked = petState.unlockedChars.includes(char.id);
+                const item = document.createElement('div');
+                item.className = `flex flex-col items-center justify-center p-1.5 rounded border border-[#0f380f] ${isUnlocked ? 'bg-[#8bac0f]' : 'bg-[#306230]'}`;
+                
+                const svgContent = generatePixelArtSvg(char.id, !isUnlocked);
+
+                item.innerHTML = `
+                    <div class="w-10 h-10 mb-0.5">${svgContent}</div>
+                    <div class="text-[9px] font-bold text-[#0f380f] truncate w-full text-center">
+                        ${isUnlocked ? char.name : '???'}
+                    </div>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function showGameClear() {
+            playSfx('evo');
+            document.getElementById('clear-svg-container').innerHTML = generatePixelArtSvg(100);
+            const overlay = document.getElementById('clear-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function restartAfterClear() {
+            playSfx('button');
+            document.getElementById('clear-overlay').classList.add('hidden');
+            document.getElementById('clear-overlay').classList.remove('flex');
+        }
+
+        // --- セーブ & リセット ---
+        function saveGame() {
+            petState.lastSave = Date.now();
+            localStorage.setItem('retro_pet_dark_rare_save', JSON.stringify(petState));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('retro_pet_dark_rare_save');
+            if (saved) {
+                try {
+                    petState = JSON.parse(saved);
+                    showMessage("前回のデータから再開しました");
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        function confirmReset() {
+            playSfx('button');
+            if (confirm("データを最初からリセットしますか？\n（図鑑の解放状況もリセットされます）")) {
+                localStorage.removeItem('retro_pet_dark_rare_save');
+                petState = {
+                    generation: 1,
+                    stage: 1,
+                    charId: 1,
+                    care: 30,
+                    affection: 0,
+                    speed: 0,
+                    age: 0,
+                    isMarrying: false,
+                    isAscending: false,
+                    unlockedChars: [1],
+                    lastSave: Date.now()
+                };
+                showMessage("新規データでスタート！");
+                updateUI();
+            }
+        }
+    </script>
+</body>
+</html>
