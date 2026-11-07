@@ -4,7 +4,41 @@ const cv=document.getElementById('c'),X=cv.getContext('2d');
 let W,H;
 const PAL=['#2b2d3a','#e53935','#43a047','#fdd835','#1e88e5','#fb8c00','#8e24aa','#f48fb1','#8bc34a','#eceff1'];
 const GL=['','●','▲','■','◆','★','♥','✚','▼','○'];
-const NAMES=['すいか','ハート','ほし','おはな','ダイヤ','きのこ','さかな','おうち'];
+const NAMES=['ピンクのまるい子','ぼうしの冒険者','マスクヒーロー','ペンギンと風船','青いロボット','白い子犬','黄色いヒーロー','黄色いヒーロー','黄色いヒーロー','ピンク髪の冒険者','テンガロンハットの子','おかし好きの冒険者','黒いマントのヒーロー','まるい青ねこ','いたずら好きの子','青い帽子の冒険者','銀色のロボット','森の魔法使い','黒髪のヒーロー','茶色いくま','黄色いどうぶつ','たれ耳うさぎ','黒いねこ','赤いヒーロー','黒いヒーロー','黄色い宇宙人','青い宇宙人','ほっぺの子','青いハリネズミ','赤い服の冒険者','黄色い服の子'];
+const ART_META=[
+ {cols:48,rows:48},
+ {cols:32,rows:32},
+ {cols:32,rows:32},
+ {cols:29,rows:30},
+ {cols:32,rows:40},
+ {cols:20,rows:27},
+ {cols:25,rows:28},
+ {cols:25,rows:40},
+ {cols:28,rows:32},
+ {cols:32,rows:37},
+ {cols:30,rows:36},
+ {cols:32,rows:35},
+ {cols:32,rows:36},
+ {cols:32,rows:32},
+ {cols:32,rows:32},
+ {cols:26,rows:37},
+ {cols:32,rows:32},
+ {cols:40,rows:40},
+ {cols:34,rows:33},
+ {cols:26,rows:37},
+ {cols:32,rows:31},
+ {cols:35,rows:51},
+ {cols:26,rows:39},
+ {cols:32,rows:32},
+ {cols:35,rows:45},
+ {cols:41,rows:46},
+ {cols:32,rows:32},
+ {cols:37,rows:36},
+ {cols:32,rows:43},
+ {cols:32,rows:36},
+ {cols:23,rows:36}
+];
+const ART_IMGS=ART_META.map((_,i)=>{const im=new Image();im.src=`hachi/d_${String(i+1).padStart(3,'0')}.png`;return im});
 const SH=[
 (x,y)=>Math.max(Math.abs(x)-(y+1)*.48,y-.85)*1.1,
 (x,y)=>{const u=x*1.25,v=-y*1.25+.15,a=u*u+v*v-1;return Math.cbrt(a*a*a-u*u*v*v*v)*.6},
@@ -23,14 +57,39 @@ addEventListener('resize',rs);
 
 /* ---------- ステージ生成 ---------- */
 function exp(G,i,j){return i==0||j==0||i==n-1||j==n-1||!G[j][i-1]||!G[j][i+1]||!G[j-1][i]||!G[j+1][i]}
+function makePixelArt(img,size,maxColors,meta){
+ try{
+  const c=document.createElement('canvas'),cx=c.getContext('2d',{willReadFrequently:true});c.width=img.naturalWidth;c.height=img.naturalHeight;cx.drawImage(img,0,0);
+  const data=cx.getImageData(0,0,c.width,c.height).data,raw=Array.from({length:meta.rows},()=>Array(meta.cols));
+  for(let y=0;y<meta.rows;y++)for(let x=0;x<meta.cols;x++){const px=Math.min(c.width-1,Math.floor((x+.5)*c.width/meta.cols)),py=Math.min(c.height-1,Math.floor((y+.5)*c.height/meta.rows)),p=(py*c.width+px)*4;raw[y][x]=data[p+3]<80?[-1,-1,-1]:[data[p],data[p+1],data[p+2]]}
+  const hist=new Map(),add=(x,y)=>{const v=raw[y][x],k=v.join(',');hist.set(k,(hist.get(k)||0)+1)};
+  for(let x=0;x<meta.cols;x++){add(x,0);add(x,meta.rows-1)}for(let y=1;y<meta.rows-1;y++){add(0,y);add(meta.cols-1,y)}
+  const bg=[...hist.entries()].filter(([k])=>{if(k==='-1,-1,-1')return false;const [r,g,b]=k.split(',').map(Number);return r*.3+g*.59+b*.11>145}).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k])=>k.split(',').map(Number));
+  const isBg=(x,y)=>raw[y][x][0]<0||bg.some(v=>Math.abs(v[0]-raw[y][x][0])<18&&Math.abs(v[1]-raw[y][x][1])<18&&Math.abs(v[2]-raw[y][x][2])<18);
+  const empty=Array.from({length:meta.rows},()=>Array(meta.cols).fill(false)),queue=[];for(let y=0;y<meta.rows;y++)for(let x=0;x<meta.cols;x++)if(raw[y][x][0]<0)empty[y][x]=true;
+  for(let x=0;x<meta.cols;x++)for(const y of [0,meta.rows-1])if(isBg(x,y)&&!empty[y][x]){empty[y][x]=true;queue.push([x,y])}
+  for(let y=0;y<meta.rows;y++)for(const x of [0,meta.cols-1])if(isBg(x,y)&&!empty[y][x]){empty[y][x]=true;queue.push([x,y])}
+  for(let p=0;p<queue.length;p++){const [x,y]=queue[p];for(const [nx,ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]])if(nx>=0&&ny>=0&&nx<meta.cols&&ny<meta.rows&&!empty[ny][nx]&&isBg(nx,ny)){empty[ny][nx]=true;queue.push([nx,ny])}}
+  const seen=Array.from({length:meta.rows},()=>Array(meta.cols).fill(false));let best=[];
+  for(let y=0;y<meta.rows;y++)for(let x=0;x<meta.cols;x++)if(!empty[y][x]&&!seen[y][x]){const part=[[x,y]];seen[y][x]=true;for(let p=0;p<part.length;p++){const [ax,ay]=part[p];for(const [nx,ny] of [[ax-1,ay],[ax+1,ay],[ax,ay-1],[ax,ay+1]])if(nx>=0&&ny>=0&&nx<meta.cols&&ny<meta.rows&&!empty[ny][nx]&&!seen[ny][nx]){seen[ny][nx]=true;part.push([nx,ny])}}if(part.length>best.length)best=part}
+  if(!best.length)return null;
+  let minX=meta.cols,maxX=0,minY=meta.rows,maxY=0;best.forEach(([x,y])=>{minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)});
+  const counts=new Map();for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(!empty[y][x]){const key=raw[y][x].join(',');counts.set(key,(counts.get(key)||0)+1)}
+  const colors=[...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,maxColors).map(([key])=>{const [r,g,b]=key.split(',').map(Number);return `#${[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('')}`});if(!colors.length)return null;
+  const rgb=colors.map(v=>[parseInt(v.slice(1,3),16),parseInt(v.slice(3,5),16),parseInt(v.slice(5,7),16)]),grid=Array.from({length:size},()=>Array(size).fill(-1)),bw=maxX-minX+1,bh=maxY-minY+1,scale=Math.min((size-2)/bw,(size-2)/bh),dw=bw*scale,dh=bh*scale,ox=(size-dw)/2,oy=(size-dh)/2;
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){const sx=minX+Math.floor((x+.5-ox)/scale),sy=minY+Math.floor((y+.5-oy)/scale);if(x+.5<ox||x+.5>=ox+dw||y+.5<oy||y+.5>=oy+dh||sx<minX||sx>maxX||sy<minY||sy>maxY||empty[sy][sx])continue;const v=raw[sy][sx];let ix=0,bd=1e9;rgb.forEach((p,i)=>{const d=(p[0]-v[0])**2+(p[1]-v[1])**2+(p[2]-v[2])**2;if(d<bd){bd=d;ix=i}});grid[y][x]=ix}
+  return {colors,grid};
+ }catch(e){return null}
+}
 function build(){
- const R=rng(st*7919+13);sh=(st-1+((st-1)/8|0))%8;
- const k=Math.min(10,5+((st-1)/20|0));n=26+((st-1)/3|0);
- cols=[PAL[0]];const off=((st-1)*4)%9;for(let i=0;i<k-1;i++)cols.push(PAL[1+(off+i)%9]);
- g=[];res=[];const f=SH[sh];tot=0;
+ const R=rng(st*7919+13);sh=(st-1)%ART_META.length;n=26+((st-1)/3|0);
+ const maxColors=Math.min(10,6+((st-1)/25|0)),img=ART_IMGS[sh],art=img&&img.complete&&img.naturalWidth?makePixelArt(img,n,maxColors,ART_META[sh]):null;
+ let k;if(art){cols=art.colors;k=cols.length}else{k=Math.min(10,5+((st-1)/20|0));cols=[PAL[0]];const off=((st-1)*4)%9;for(let i=0;i<k-1;i++)cols.push(PAL[1+(off+i)%9])}
+ g=[];res=[];const f=SH[sh%SH.length];tot=0;
  for(let j=0;j<n;j++){g[j]=[];res[j]=[];for(let i=0;i<n;i++){
-  const x=(i+.5)/n*2-1,y=(j+.5)/n*2-1,s=f(x,y);let v=0;res[j][i]=0;
-  if(s<0){const t=-s,m=(st+sh)%4,h=rng((Math.min(i,n-1-i)+1)*977+j*131+st)();let q;
+  const x=(i+.5)/n*2-1,y=(j+.5)/n*2-1,s=art?1:f(x,y);let v=0;res[j][i]=0;
+  if(art){const q=art.grid[j][i];if(q>=0){v=q+1;tot++}}
+  else if(s<0){const t=-s,m=(st+sh)%4,h=rng((Math.min(i,n-1-i)+1)*977+j*131+st)();let q;
    if(t<1.7/n)q=0;else{let fr=m==0?(y+1)/2:m==1?Math.min(.99,t*1.3):m==2?((x+y)/2+1)/2:Math.atan2(y,x)/6.283+.5;
     fr=Math.min(.999,Math.max(0,fr+(h-.5)*.2));q=1+Math.floor(fr*(k-1));
     if(h>.95)q=q%(k-1)+1}
@@ -50,6 +109,8 @@ function build(){
   if(m==0||solvable())break}
  boxes=Q.flat();slots=[0,1,2,3,4].map(()=>({b:null,out:0,cd:0}));bees=[];pts=[];state='play';setOpen=false;layout();
 }
+let waitingForArt=false;
+function startStage(){const img=ART_IMGS[(st-1)%ART_IMGS.length];if(img&&!img.complete){if(!waitingForArt){waitingForArt=true;const ready=()=>{waitingForArt=false;build()};img.addEventListener('load',ready,{once:true});img.addEventListener('error',ready,{once:true})}return}waitingForArt=false;build()}
 function solvable(){const G=g.map(r=>r.slice()),q=Q.map(a=>a.map(b=>[b.c,b.n])),sl=[0,0,0,0,0];let left=tot;
  const has=c=>{for(let j=0;j<n;j++)for(let i=0;i<n;i++)if(G[j][i]==c+1&&exp(G,i,j))return 1};
  for(let it=0;it<3000&&left>0;it++){let ch=false;
@@ -130,7 +191,7 @@ function panel(h,t,sub,bt,f){B(0,0,W,H,()=>{});rr(0,0,W,H,0,'rgba(60,40,30,.45)'
  rr(x+30,y+h-70,w-60,48,24,'#ffb300');T(bt,W/2,y+h-46,18,'#fff');B(x+30,y+h-70,w-60,48,f)}
 function draw(){btns=[];X.clearRect(0,0,W,H);X.fillStyle='#d9cdc7';X.fillRect(0,0,W,H);
  if(state=='title'){X.fillStyle='#ffe082';X.fillRect(0,0,W,H);T('🐝',W/2,H*.28,64,'#000');T('はちみつカラー便',W/2,H*.4,34,'#6d4c41');T('いろをえらんで ミツバチにはこんでもらおう',W/2,H*.47,14,'#8d6e63');
-  rr(W/2-110,H*.56,220,56,28,'#ff8f00');T(st>1?`つづきから Stage ${st}`:'はじめる',W/2,H*.56+28,20,'#fff');B(W/2-110,H*.56,220,56,()=>build());return}
+  rr(W/2-110,H*.56,220,56,28,'#ff8f00');T(st>1?`つづきから Stage ${st}`:'はじめる',W/2,H*.56+28,20,'#fff');B(W/2-110,H*.56,220,56,()=>startStage());return}
  const pb=L.pb;rr(8,64,W-16,pb-56,16,'#f6faff');
  const ts=L.ts;
  for(let j=0;j<n;j++)for(let i=0;i<n;i++){const v=g[j][i];if(!v)continue;const x=L.px+i*ts,y=L.py+j*ts;
@@ -141,12 +202,12 @@ function draw(){btns=[];X.clearRect(0,0,W,H);X.fillStyle='#d9cdc7';X.fillRect(0,
  for(let i=0;i<5;i++){const f=Q[i][0];if(f&&state=='play'&&!setOpen&&slots.some(s=>!s.b))B(qx(i),gy(0),L.bw,L.bh,()=>sel(i))}
  bees.forEach(beeD);pts.forEach(p=>{X.fillStyle=p.c;X.fillRect(p.x,p.y,p.z,p.z)});
  T('⚙',30,30,30,'#6d4c41');B(8,8,44,44,()=>{setOpen=true});
- T('↻',W-30,30,30,'#6d4c41');B(W-52,8,44,44,()=>build());
+ T('↻',W-30,30,30,'#6d4c41');B(W-52,8,44,44,()=>startStage());
  T(`Stage ${st}  ${NAMES[sh]}`,W/2,22,18,'#6d4c41');
  rr(64,40,W-128,12,6,'#fff');rr(64,40,Math.max(12,(W-128)*(1-rem/tot)),12,6,'#ffb300');
  if(mt>0){rr(W/2-150,pb+4,300,28,14,'rgba(109,76,65,.85)');T(msg,W/2,pb+18,13,'#fff')}
- if(state=='clear')panel(210,'ステージクリア！','ぜんぶ はこびおわったよ 🌼',st>=100?'おしまい':'つぎへ',()=>{st=Math.min(100,st+1);build()});
- if(state=='fail')panel(210,'ミツバチがうごけないよ','とれる場所がないみたい。ボックスの出す順番をかえてみよう','もういちど',()=>build());
+ if(state=='clear')panel(210,'ステージクリア！','ぜんぶ はこびおわったよ 🌼',st>=100?'おしまい':'つぎへ',()=>{st=Math.min(100,st+1);startStage()});
+ if(state=='fail')panel(210,'ミツバチがうごけないよ','とれる場所がないみたい。ボックスの出す順番をかえてみよう','もういちど',()=>startStage());
  if(setOpen){B(0,0,W,H,()=>{});rr(0,0,W,H,0,'rgba(60,40,30,.45)');const w=Math.min(300,W-40),x=(W-w)/2,y=H/2-110;rr(x,y,w,220,22,'#fffaf0');T('せってい',W/2,y+32,22,'#6d4c41');
   [['BGM',bv,y+82,v=>{bv=v}],['こうかおん',sv,y+132,v=>{sv=v;S('sel')}]].forEach(([nm,val,yy,fn])=>{T(nm,x+20,yy-14,14,'#8d6e63','left');rr(x+20,yy,w-40,14,7,'#e0d4cd');rr(x+20,yy,Math.max(14,(w-40)*val),14,7,'#ffb300');
    B(x+10,yy-8,w-20,30,px=>{fn(Math.min(1,Math.max(0,(px-x-20)/(w-40))));setV()})});
