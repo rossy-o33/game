@@ -236,12 +236,11 @@ let last=performance.now();
 function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;upd(dt);draw();requestAnimationFrame(loop)}
 
 /* ---------- 音 ---------- */
-let AC,bg,se,ar,dl,NB,nt=0,step=0,lap={};
+let AC,bg,se,NB,PL=[],lastK=-1;
 function initA(){if(AC!==undefined)return;try{AC=new(window.AudioContext||webkitAudioContext)()}catch(e){AC=null;return}
- bg=AC.createGain();se=AC.createGain();bg.connect(AC.destination);se.connect(AC.destination);
- ar=AC.createGain();dl=AC.createDelay(1);const fb=AC.createGain(),wt=AC.createGain();fb.gain.value=.3;wt.gain.value=.4;ar.connect(bg);ar.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wt);wt.connect(bg);setV();
+ bg=AC.createGain();se=AC.createGain();bg.connect(AC.destination);se.connect(AC.destination);setV();
  const l=AC.sampleRate;NB=AC.createBuffer(1,l,l);const d=NB.getChannelData(0);for(let i=0;i<l;i++)d[i]=Math.random()*2-1;
- nt=AC.currentTime+.1;setInterval(sched,40)}
+ startTrack(AC.currentTime+.1);setInterval(sched,40)}
 function setV(){if(AC){bg.gain.value=bgOn?bv*.6:0;se.gain.value=sv}}
 const mf=m=>440*Math.pow(2,(m-69)/12);
 function osc(t,f,d,ty,v,dest,f2){const o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
@@ -249,37 +248,54 @@ function osc(t,f,d,ty,v,dest,f2){const o=AC.createOscillator(),g=AC.createGain()
 function nz(t,d,v,hp,dest){const s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NB;f.type='highpass';f.frequency.value=hp;
  g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(dest);s.start(t);s.stop(t+d+.05)}
 /* 短いコードのスタブ(長く伸ばさない・音量は小さめ) */
-function stab(t,ns,d,cut){const f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=cut;
- g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.014,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+d);f.connect(g);g.connect(bg);
+function stab(t,ns,d,cut,dest){const f=AC.createBiquadFilter(),g=AC.createGain();f.type='lowpass';f.frequency.value=cut;
+ g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.014,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+d);f.connect(g);g.connect(dest);
  ns.forEach(n=>[-8,8].forEach(c=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=mf(n);o.detune.value=c;o.connect(f);o.start(t);o.stop(t+d+.05)}))}
-/* 32小節ごとにキー・コード進行・テンポ・アルペジオ・リズムを作り直す(毎周ちがう曲になる) */
-const SC=[0,2,4,7,9],CT=[[0,4,7,11],[0,3,7,10],[0,4,7,10]],
-PR=[[[5,0],[7,2],[4,1],[9,1]],[[9,1],[5,0],[0,0],[7,2]],[[0,0],[4,1],[5,0],[7,2]],[[2,1],[7,2],[0,0],[9,1]]],
-AP=[[0,1,2,3,2,1,3,2,0,2,1,3,2,3,1,2],[0,2,1,3,0,2,3,1,2,0,3,1,2,3,0,1],[3,2,1,0,1,2,3,2,3,1,2,0,2,1,3,1],[0,1,2,1,3,2,1,2,0,1,2,3,2,1,0,1]],
-BP=[[0,6,8,14],[0,3,6,8,11,14],[0,2,6,8,10,14],[0,4,8,12]],PS=[[2,6,10,14],[0,3,8,11],[4,10,12]];
-const pick=a=>a[Math.random()*a.length|0];
-function newLap(){const key=pick([0,2,-2,3,-3,5,-5]),pr=pick(PR);
- lap={sp:60/pick([124,132,140])/4,key,chs:pr.map(([r,t])=>CT[t].map(o=>48+key+r+o)),kick:pick([[0,10],[0,6,10],[0,8],[0,3,10]]),
-  ap:pick(AP),bp:pick(BP),ps:pick(PS),cut:pick([1400,2000,2800]),hi:pick([0,1]),
-  mel:[0,1,2,3].map(()=>[0,3,6,8,10,12,14].map(()=>Math.random()<.5?SC[Math.random()*5|0]+(Math.random()<.3?12:0):null))};
- if(dl)dl.delayTime.value=lap.sp*3}
-function sched(){if(!AC)return;while(nt<AC.currentTime+.25){const s=step%512,bar=s>>4,sb=s&15,sec=bar>>3;
- if(s==0)newLap();const c=lap.chs[(bar>>1)&3],sp=lap.sp,fill=bar>=30;
+/* ---- 10曲。それぞれ32小節のループ(2周) → 最後の2小節でクロスフェードして次の曲(ランダム)へ ---- */
+const LOOPS=2,SC=[0,2,4,7,9],CT=[[0,4,7,11],[0,3,7,10],[0,4,7,10]],
+PR=[[[5,0],[7,2],[4,1],[9,1]],[[9,1],[5,0],[0,0],[7,2]],[[0,0],[4,1],[5,0],[7,2]],[[2,1],[7,2],[0,0],[9,1]],[[0,0],[9,1],[5,0],[7,2]],[[9,1],[7,2],[5,0],[4,1]],[[5,0],[0,0],[7,2],[9,1]],[[0,0],[7,2],[9,1],[5,0]]],
+AP=[[0,1,2,3,2,1,3,2,0,2,1,3,2,3,1,2],[0,2,1,3,0,2,3,1,2,0,3,1,2,3,0,1],[3,2,1,0,1,2,3,2,3,1,2,0,2,1,3,1],[0,1,2,1,3,2,1,2,0,1,2,3,2,1,0,1],[0,0,2,2,1,1,3,3,0,0,2,2,3,3,1,1],[0,3,1,3,2,3,1,3,0,3,1,3,2,3,1,3],[3,1,2,0,3,1,2,0,2,0,3,1,2,0,3,1],[0,2,3,2,1,2,3,2,0,2,3,2,1,3,2,1]],
+BP=[[0,6,8,14],[0,3,6,8,11,14],[0,2,6,8,10,14],[0,4,8,12],[0,3,8,10,14],[0,7,8,15]],PS=[[2,6,10,14],[0,3,8,11],[4,10,12]],
+KP=[[0,10],[0,6,10],[0,8],[0,3,10],[0,5,8,13],[0,7,10],[0,4,8,12],[0,6,8,11]],SNP=[[8],[4,12],[8,14],[8,11],[8],[4,12],[8],[8,15]],
+TR=[{b:128,k:0,p:0,kd:0,sn:0,hs:0,ar:0,bs:0,ps:0,w:0,hi:0,cut:1800,seed:11},{b:140,k:2,p:1,kd:1,sn:1,hs:1,ar:1,bs:1,ps:1,w:1,hi:1,cut:2600,seed:23},
+{b:120,k:-3,p:2,kd:2,sn:2,hs:2,ar:2,bs:2,ps:2,w:2,hi:0,cut:1400,seed:37},{b:132,k:5,p:3,kd:3,sn:3,hs:3,ar:3,bs:3,ps:0,w:0,hi:1,cut:2200,seed:41},
+{b:144,k:-2,p:4,kd:4,sn:4,hs:0,ar:4,bs:4,ps:1,w:1,hi:0,cut:3000,seed:53},{b:124,k:3,p:5,kd:5,sn:5,hs:1,ar:5,bs:5,ps:2,w:2,hi:1,cut:1600,seed:67},
+{b:136,k:7,p:6,kd:6,sn:6,hs:2,ar:6,bs:0,ps:0,w:1,hi:0,cut:2400,seed:79},{b:116,k:-5,p:7,kd:7,sn:7,hs:3,ar:7,bs:1,ps:1,w:0,hi:1,cut:1500,seed:83},
+{b:128,k:1,p:0,kd:2,sn:1,hs:1,ar:2,bs:2,ps:2,w:2,hi:1,cut:2000,seed:97},{b:138,k:-1,p:2,kd:1,sn:0,hs:2,ar:3,bs:3,ps:0,w:1,hi:0,cut:2800,seed:101}];
+function mkP(k,t0){const T=TR[k],sp=60/T.b/4,pg=AC.createGain(),ar=AC.createGain(),dl=AC.createDelay(1),fb=AC.createGain(),wt=AC.createGain();
+ pg.gain.setValueAtTime(.0001,t0);pg.gain.linearRampToValueAtTime(1,t0+sp*32);pg.connect(bg);
+ ar.connect(pg);ar.connect(dl);dl.delayTime.value=sp*3;fb.gain.value=.3;wt.gain.value=.4;dl.connect(fb);fb.connect(dl);dl.connect(wt);wt.connect(pg);
+ const R=rng(T.seed),mel=[0,1,2,3].map(()=>[0,3,6,8,10,12,14].map(()=>R()<.5?SC[R()*5|0]+(R()<.3?12:0):null));if(mel[0][0]==null)mel[0][0]=0;
+ return{k,T,sp,pg,ar,mel,chs:PR[T.p].map(([r,t])=>CT[t].map(o=>48+T.k+r+o)),step:0,nt:t0,total:512*LOOPS}}
+function startTrack(t0){let k;do{k=Math.random()*TR.length|0}while(k==lastK&&TR.length>1);lastK=k;PL.push(mkP(k,t0))}
+function stepP(P){const T=P.T,s=P.step%512,bar=s>>4,sb=s&15,sec=bar>>3,c=P.chs[(bar>>1)&3],sp=P.sp,t=P.nt,d=P.pg,fill=bar>=30;
+ if(P.step==P.total-32){d.gain.setValueAtTime(1,t);d.gain.linearRampToValueAtTime(.0001,t+sp*32);startTrack(t)}
  /* ドラム */
- if((sec==1||sec==2||fill||(sec==0&&bar>=4))&&lap.kick.includes(sb))osc(nt,140,.25,'sine',.5,bg,40);
- if((sec==1||sec==2)&&sb==8)nz(nt,.18,.22,1500,bg);
- if(fill&&sb%2==0)nz(nt,.09,.1+.01*sb,2000,bg);
- if(sec==2?true:sec==1?sb%2==0:sb%4==2)nz(nt,.04,sb%4==2?.07:.04,7000,bg);
+ if((sec==1||sec==2||fill||(sec==0&&bar>=4))&&KP[T.kd].includes(sb))osc(t,140,.25,'sine',.5,d,40);
+ if((sec==1||sec==2)&&SNP[T.sn].includes(sb))nz(t,.18,.22,1500,d);
+ if(fill&&sb%2==0)nz(t,.09,.1+.01*sb,2000,d);
+ const hv=T.hs==0?(sec==2||(sec==1&&sb%2==0)||sb%4==2):T.hs==1?(sb%4==2||(sec==2&&sb%2==1)):T.hs==2?(sec>0||sb%2==0):sb%2==0;
+ if(hv)nz(t,.04,sb%4==2?.07:.04,7000,d);
  /* ベースライン */
- if(lap.bp.includes(sb))osc(nt,mf(c[0]-12+(sb==8?12:0)),sp*2.4,'sine',sec==3?.22:.3,bg);
+ if(BP[T.bs].includes(sb))osc(t,mf(c[0]-12+(sb==8?12:0)),sp*2.4,'sine',sec==3?.22:.3,d);
  /* 上物アルペジオ(全編で鳴る) */
- const an=c[lap.ap[sb]]+12+((sb%4==3||(lap.hi&&sb>=8))?12:0),av=sec==0?.07:sec==3?.08:.095;
- osc(nt,mf(an),.16,'triangle',av,ar);osc(nt,mf(an),.11,'square',av*.35,ar);
+ const f=mf(c[AP[T.ar][sb]]+12+((sb%4==3||(T.hi&&sb>=8))?12:0)),av=sec==0?.07:sec==3?.08:.095;
+ if(T.w==0){osc(t,f,.16,'triangle',av,P.ar);osc(t,f,.11,'square',av*.35,P.ar)}
+ else if(T.w==1){osc(t,f,.15,'sawtooth',av*.4,P.ar);osc(t,f,.13,'triangle',av*.6,P.ar)}
+ else{osc(t,f,.12,'square',av*.4,P.ar);osc(t,f*2,.1,'sine',av*.7,P.ar)}
  /* 短いコードスタブ */
- if(lap.ps.includes(sb))stab(nt,c.map(n=>n+12),sp*2.2,lap.cut);
+ if(PS[T.ps].includes(sb))stab(t,c.map(n=>n+12),sp*2.2,T.cut,d);
  /* リード */
- if(sec>=2){const i=[0,3,6,8,10,12,14].indexOf(sb),v=i<0?null:lap.mel[bar&3][i];if(v!=null)osc(nt,mf(72+lap.key+v),sp*2.6,'triangle',sec==3?.05:.08,bg)}
- step++;nt+=sp}}
+ if(sec>=2){const i=[0,3,6,8,10,12,14].indexOf(sb),v=i<0?null:P.mel[bar&3][i];
+  if(v!=null)osc(t,mf(72+T.k+v),sp*2.6,T.w==1?'sawtooth':T.w==2?'square':'triangle',(sec==3?.05:.08)*(T.w?.55:1),d)}
+ P.step++;P.nt+=sp}
+function sched(){if(!AC)return;const lim=AC.currentTime+.25;
+ PL.slice().forEach(P=>{while(P.nt<lim&&P.step<P.total)stepP(P)});
+ PL=PL.filter(P=>{if(P.step>=P.total&&P.nt<AC.currentTime-.5){setTimeout(()=>{try{P.pg.disconnect()}catch(e){}},300);return false}return true})}
+/* スマホでアプリを閉じたり別アプリに切り替えたら、音を止める */
+document.addEventListener('visibilitychange',()=>{if(!AC)return;if(document.hidden)AC.suspend();else AC.resume()});
+addEventListener('pagehide',()=>{if(AC)AC.suspend()});
+addEventListener('pageshow',()=>{if(AC&&!document.hidden)AC.resume()});
 function S(k){if(!AC)return;const t=AC.currentTime;
  if(k=='sel')osc(t,880,.12,'sine',.3,se,1320);
  else if(k=='pop')osc(t,520+Math.random()*120,.09,'sine',.22,se,900);
