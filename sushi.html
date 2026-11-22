@@ -72,7 +72,7 @@ dialog{max-width:460px;background:#fff8e7;color:#5a3a1a;border:4px solid #8a5a2b
 <div id="app">
 <div id="mn"></div>
 <div class="pn" id="p1"></div>
-<div id="bd"><div id="bh"><button class="wb ic" id="tp" title="トップへ">🏠</button><button class="wb ic" id="zk" title="図鑑">📖</button><button class="wb ic" id="rl" title="ルール">❓</button><div id="bn"></div></div><svg id="sv" viewBox="0 0 800 430"></svg><div id="info"></div><div id="res" hidden></div></div>
+<div id="bd"><div id="bh"><button class="wb ic" id="tp" title="トップへ">🏠</button><button class="wb ic" id="zk" title="図鑑">📖</button><button class="wb ic" id="rl" title="ルール">❓</button><button class="wb ic" id="bm" title="BGM">🔇</button><div id="bn"></div></div><svg id="sv" viewBox="0 0 800 430"></svg><div id="info"></div><div id="res" hidden></div></div>
 <div class="pn" id="p2"></div><div class="pn" id="p3"></div><div class="pn" id="p4"></div>
 <div id="bt">
 <select class="wb" id="mode"><option value="c0">CPU:かんたん</option><option value="c1" selected>CPU:ふつう</option><option value="c2">CPU:つよい</option><option value="2p">2人対戦</option><option value="m3">3人+CPU2</option><option value="m4">4人+CPU3</option><option value="h3">3人(人間)</option><option value="h4">4人(人間)</option></select>
@@ -141,6 +141,22 @@ return A}
 let S,sel,ord,hist=[],AC;
 function snd(f,d=.14){try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(.15,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 function burst(){try{AC=AC||new AudioContext();const n=AC.sampleRate*.5,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),g=AC.createGain(),f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=1800;g.gain.value=.25;s.buffer=b;s.connect(f);f.connect(g);g.connect(AC.destination);s.start()}catch(e){}}
+const MD=[[0,2,4,7,9],[0,2,5,7,9],[0,1,5,7,8]];let BG=0,bgT,bgM;
+function bgm(on){BG=on;clearTimeout(bgT);$('#bm').textContent=on?'🔊':'🔇';if(!on)return;
+try{AC=AC||new AudioContext();AC.resume&&AC.resume();
+if(!bgM){bgM=AC.createGain();bgM.gain.value=.35;const d=AC.createDelay(),f=AC.createGain(),lp=AC.createBiquadFilter();d.delayTime.value=.42;f.gain.value=.38;lp.type='lowpass';lp.frequency.value=2200;bgM.connect(AC.destination);bgM.connect(d);d.connect(lp);lp.connect(f);f.connect(d);lp.connect(AC.destination)}}catch(e){return}
+let root=50,md=MD[0],i=7,n=0;
+const mf=m=>440*Math.pow(2,(m-69)/12),note=k=>root+md[((k%5)+5)%5]+12*Math.floor(k/5);
+const tone=(m,t,dur,vol,type)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(mf(m)*(type=='triangle'?1.012:1),t);if(type=='triangle')o.frequency.exponentialRampToValueAtTime(mf(m),t+.08);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+(type=='sine'?dur*.3:.01));g.gain.exponentialRampToValueAtTime(.0005,t+dur);o.connect(g);g.connect(bgM);o.start(t);o.stop(t+dur+.05)};
+const dr=t=>{const o=AC.createOscillator(),g=AC.createGain();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(42,t+.18);g.gain.setValueAtTime(.5,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.connect(g);g.connect(bgM);o.start(t);o.stop(t+.45)};
+const step=()=>{if(!BG)return;const t=AC.currentTime+.05,r=Math.random;
+if(n%64==0){root=[50,52,55,57][r()*4|0];md=MD[r()*3|0];i=7}
+if(n%16==0){tone(root-24,t,3.4,.2,'sine');tone(root-17,t,3.4,.1,'sine')}
+if(n%16==0||(n%16==8&&r()<.5))dr(t);
+if(r()<.6){i=Math.max(3,Math.min(13,i+[-2,-1,-1,0,1,1,2][r()*7|0]));tone(note(i),t,1.7,.16,'triangle');if(r()<.14)for(let k=1;k<4;k++)tone(note(i+k),t+k*.07,1.2,.1,'triangle')}
+if(n%32==12&&r()<.6)tone(note(i+5),t,4.2,.07,'sine');
+n++;bgT=setTimeout(step,420+r()*50)};
+step()}
 function save(){try{localStorage.setItem('ss',JSON.stringify({S,m:$('#mode').value,hist:hist.slice(-10)}))}catch(e){}}
 function ld(){try{const d=JSON.parse(localStorage.getItem('ss'));$('#mode').value=d.m;S=d.S;S.fx=null;hist=d.hist||[];sel=ord=null;R();if(!S.over&&isCpu(S.turn))setTimeout(cpu,600)}catch(e){init()}}
 function undo(){if(NP>2){S.msg='3〜4人では待ったは使えません';R();return}if(!hist.length||(isCpu(S.turn)&&!S.over))return;let n=Math.min(vs()?2:1,hist.length),s;while(n--)s=hist.pop();S=JSON.parse(s);S.fx=null;sel=ord=null;R();save()}
@@ -150,7 +166,7 @@ function init(){const n=({m3:3,m4:4,h3:3,h4:4})[$('#mode').value]||2;cfg(n);cons
 const L=[[0,-1,'salmon'],[0,0,'toro'],[0,1,'ika'],[1,-1,'tamago'],[1,0,'aji'],[1,1,'tamago']];
 if(n==2)L.forEach(([d,l,t])=>{B[2+l][d]={t,p:0};B[2+l][5-d]={t:t=='salmon'?'ika':t=='ika'?'salmon':t,p:1}});
 else for(let p=0;p<n;p++)L.forEach(([d,l,t])=>{const X=[4+l,W-1-d,4+l,d][p],Y=[Hh-1-d,4+l,d,4+l][p];B[Y][X]={t,p}});
-S={B,pl:[...Array(n)].map((_,i)=>({m:1000+(n==2&&i?200:0),s:0,pass:3})),turn:0,n:0,over:null,msg:'駒をタップして動かそう',log:[]};sel=ord=null;hist=[];R()}
+S={B,pl:[...Array(n)].map((_,i)=>({m:1000,s:0,pass:3})),turn:0,n:0,over:null,msg:'駒をタップして動かそう',log:[]};sel=ord=null;hist=[];R()}
 const vs=()=>'cm'.includes($('#mode').value[0]),isCpu=p=>vs()&&p>0,human=()=>!S.over&&!isCpu(S.turn),PN=i=>NP==2?['攻方','玉方'][i]:['南','東','北','西'][i],nx=p=>{let t=p;do t=(t+1)%NP;while(S.pl[t].dead);return t},zone=(p,x,y)=>NP==2?(p?x>=W-2:x<2):[y>=Hh-2,x>=W-2,y<2,x<2][p];
 function threat(p){let tx;S.B.forEach((r,y)=>r.forEach((c,x)=>{if(c&&c.t=='toro'&&c.p==p)tx=[x,y]}));if(!tx)return 0;
 for(let y=0;y<Hh;y++)for(let x=0;x<W;x++){const c=S.B[y][x];if(c&&c.p!=p&&gen(S.B,x,y).some(m=>m.x==tx[0]&&m.y==tx[1]&&!m.sw))return 1}return 0}
@@ -265,7 +281,7 @@ $('#bd').onclick=e=>{const t=e.target.closest('[data-x]');if(!t||!human())return
 const x=+t.dataset.x,y=+t.dataset.y,p=S.turn,c=S.B[y][x];
 if(ord){if(!c&&zone(p,x,y))play({k:'o',t:ord,x,y});else{ord=null;R()}return}
 if(sel&&S.B[sel.y][sel.x].p==p){const m=gen(S.B,sel.x,sel.y).find(m=>m.x==x&&m.y==y);if(m){play({k:'m',fx:sel.x,fy:sel.y,m});return}}
-sel=c?{x,y}:null;R()};
+sel=c&&!(sel&&sel.x==x&&sel.y==y)?{x,y}:null;R()};
 $('#nw').onclick=init;$('#mode').onchange=init;$('#rl').onclick=()=>dg.showModal();
 $('#ps').onclick=()=>human()&&S.pl[S.turn].pass>0&&play({k:'p'});
 $('#rs').onclick=()=>{if(S.over)return;if(NP==2){S.over={w:S.turn^1,why:'投了'};R();return}const p=S.turn;S.pl[p].dead=1;S.B.forEach(r=>r.forEach((c,i)=>{if(c&&c.p==p)r[i]=null}));const al=S.pl.map((q,i)=>q.dead?-1:i).filter(i=>i>=0);if(al.length<2)S.over={w:al[0],why:'投了'};else{S.msg=PN(p)+'が投了';S.turn=nx(p)}R();save();if(!S.over&&isCpu(S.turn))setTimeout(cpu,600)};
@@ -277,5 +293,6 @@ T.innerHTML=`<h1>🍣 寿司将棋</h1><label>人数<select class=wb id=tn><opti
 const up=()=>{$('#tl').style.display=$('#tk').value=='c'&&$('#tn').value=='2'?'':'none'};$('#tn').onchange=$('#tk').onchange=up;up();
 $('#go').onclick=()=>{const n=+$('#tn').value,k=$('#tk').value;$('#mode').value=n==2?(k=='c'?'c'+$('#tv').value:'2p'):(k=='c'?'m':'h')+n;T.hidden=true;init()};
 if(has)$('#ld').onclick=()=>{T.hidden=true;ld()}}
+$('#bm').onclick=()=>bgm(!BG);const au=e=>{if(e.target.closest('#bm'))return;document.removeEventListener('pointerdown',au);bgm(1)};document.addEventListener('pointerdown',au);
 init();menu();
 </script></body></html>
